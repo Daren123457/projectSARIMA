@@ -1,0 +1,2920 @@
+---
+title: "Tes ulang"
+output: html_document
+date: "2023-06-30"
+---
+
+
+# 1. Load Library/Packages
+
+```{r}
+# library untuk manipulasi data
+library(dplyr)
+# library untuk manipulasi data tanggal
+library(lubridate)
+# library untuk menampilkan hasil statistik deskriptif
+library(summarytools)
+# library untuk visualisasi data
+library (ggplot2)
+# library untuk membagi dataset
+library(caret)
+# library untuk model SARIMA
+library (forecast)
+# library tseries
+library (tseries)
+
+library(lmtest)
+```
+
+# 2. Obstain Data
+
+## a.Import Data
+
+```{r}
+ispudata <- read.csv("C:/Users/suria/Downloads/Tugas Akhir/Bab 3/Data SPKU.csv")
+```
+
+
+## b.Menampilkan Contoh Data
+
+```{r}
+# Menampilkan 6 data teratas
+head(ispudata)
+```
+
+```{r}
+# Menampilkan 6 data terbawah
+tail(ispudata)
+```
+
+
+# 3. Scrub Data
+
+## a.Melihat Summary Data
+
+```{r}
+glimpse(ispudata)
+```
+
+Berdasarkan hasil diatas dapat dilihat ada beberapa variabel dengan type
+data character. Untuk analisis variabel partikulat (`pm10`, `so2`, `co`,
+`o3`, `no2`) harus dirubah menjadi type data *numeric*. Sedangkan
+variabel `tanggal` akan dirubah menjadi type data *date*
+
+## b.Merubah Type Data Character Menjadi Numeric
+
+```{r}
+ispudata$pm10 <- as.numeric(ispudata$pm10)
+ispudata$so2 <- as.numeric(ispudata$so2)
+ispudata$co <- as.numeric(ispudata$co)
+ispudata$o3 <- as.numeric(ispudata$o3)
+ispudata$no2 <- as.numeric(ispudata$no2)
+```
+
+```{r}
+glimpse(ispudata)
+```
+
+Berdasarkan hasil diatas bisa dilihat semua kolom partikulat (`pm10`,
+`so2`, `co`, `o3`, `no2`) sudah berubah menjadi type data *numeric*
+
+## c.Merubah Type Data Tanggal Menjadi Date
+
+
+```{r}
+ispudata_ <- ispudata %>%
+  mutate(Tanggal = lubridate::mdy(Tanggal))
+
+glimpse(ispudata_)
+```
+
+
+
+
+```{r}
+# Menampilkan struktur data setelah type data dirubah
+glimpse(ispudata_)
+```
+
+Bisa dilihat bahwa, type data dari Variabel `Tanggal` sudah berubah
+menjadi type data *date*
+
+## d.Membersihkan Data NA' (Not Available)
+
+```{r}
+# Menampikan variabel dengan baris kosong
+colSums(is.na(ispudata_))
+```
+
+Dari 11 variabel terhadap 7 buah variabel dengan data NA'
+
+```{r}
+# Menghapus Baris Kosong/NA'
+ispuclean <- na.omit(ispudata_)
+summary(ispuclean)
+```
+
+```{r}
+head(ispuclean)
+tail(ispuclean)
+```
+
+```{r}
+colSums(is.na(ispuclean))
+```
+
+Berdasarkan hasil diatas bisa dilihat semua variabel tidak ada lagi data
+yang kosong atau NA'
+
+```{r}
+glimpse(ispuclean)
+```
+
+Jumlah data setelah dihapus data NA' menjadi 9595 baris observasi dengan
+11 variabel. Ada 1 variabel/kolom yang tidak penting, yaitu kolom X
+karena ini adalah nomor baris dari data.
+
+# 4. Explore Data Analysis (EDA)
+
+## a.Tampilkan Dataset
+
+```{r}
+# Memilih kolom yang penting, membuang kolom yang tidak penting
+ispufix <- select(ispuclean, -9)
+glimpse(ispufix)
+```
+
+Sekarang bisa dilihat ada 10 kolom dengan 9595 observasi baris.
+
+```{r}
+write.csv (ispufix, "dataispu.csv")
+```
+
+## b.Menampilkan hasil statistik deskriptif
+
+```{r}
+descr(ispufix)
+```
+
+## c. Visualiasi Tingkat Partikel per Hari
+
+### - Jumlah Partikel PM10
+
+```{r}
+pm10 <- ispufix %>% 
+  ggplot(aes(x = Tanggal, y = pm10)) +
+  geom_point(color = "tomato3", group=1) + 
+  labs( 
+    title = "Jumlah PM10 per Hari", 
+    subtitle = "ISPU Jakarta", 
+    caption = "Roni Yunis", 
+    x = "Tahun", 
+    y = "Jumlah" 
+  ) +
+  theme_minimal()
+pm10
+```
+
+```{r}
+ggplot(data = ispufix, aes(x = Tanggal, y = pm10, color = Kategori)) +
+  geom_line() +
+  labs(title = "Jumlah PM10 Berdasarkan Kategori", 
+       x = "Tanggal", 
+       y = "Partikel PM10 (μg/m3)") +
+  scale_color_manual(values = c("#0e8eff", "#0e0700", "#d19f00", "#fff80e"), 
+                     labels = c("Baik", "Sangat Tidak Sehat", "Sedang", "Tidak Sehat")) +
+  annotate("text", 
+           x = max(ispufix$Tanggal), 
+           y = mean(ispufix$pm10), label = "PM10") +
+  theme_minimal()
+  
+```
+
+### - Jumlah Partikel CO
+
+```{r}
+co <- ispufix %>% 
+  ggplot(aes(x = Tanggal, y = co)) +
+  geom_point(color = "orange", group=1) + 
+  labs( 
+    title = "Jumlah CO per Hari", 
+    subtitle = "ISPU Jakarta", 
+    caption = "Roni Yunis", 
+    x = "Tahun", 
+    y = "Jumlah" 
+  ) +
+  theme_minimal()
+co
+```
+
+```{r}
+ggplot(data = ispufix, aes(x = Tanggal, y = co, color = Kategori)) +
+  geom_line() +
+  labs(title = "Jumlah CO Berdasarkan Kategori", 
+       x = "Tanggal", 
+       y = "Partikel CO (μg/m3)") +
+  scale_color_manual(values = c("#0e8eff", "#0e0700", "#d19f00", "#fff80e"), 
+                     labels = c("Baik", "Sangat Tidak Sehat", "Sedang", "Tidak Sehat")) +
+  annotate("text", 
+           x = max(ispufix$Tanggal), 
+           y = mean(ispufix$co), label = "CO") +
+  theme_minimal()
+  
+```
+
+### - Jumlah Partikel NO2
+
+```{r}
+no2 <- ispufix %>% 
+  ggplot(aes(x = Tanggal, y = no2)) +
+  geom_point(color = "Red", group=1) + 
+  labs( 
+    title = "Jumlah NO2 per Hari", 
+    subtitle = "ISPU Jakarta", 
+    caption = "Roni Yunis", 
+    x = "Tahun", 
+    y = "Jumlah" 
+  ) +
+  theme_minimal()
+no2
+```
+
+```{r}
+ggplot(data = ispufix, aes(x = Tanggal, y = no2, color = Kategori)) +
+  geom_line() +
+  labs(title = "Jumlah NO2 Berdasarkan Kategori", 
+       x = "Tanggal", 
+       y = "Partikel NO2 (μg/m3)") +
+  scale_color_manual(values = c("#0e8eff", "#0e0700", "#d19f00", "#fff80e"), 
+                     labels = c("Baik", "Sangat Tidak Sehat", "Sedang", "Tidak Sehat")) +
+  annotate("text", 
+           x = max(ispufix$Tanggal), 
+           y = mean(ispufix$no2), label = "NO2") +
+  theme_minimal()
+  
+```
+
+### - Jumlah Partikel SO2
+
+```{r}
+so2 <- ispufix %>% 
+  ggplot(aes(x = Tanggal, y = so2)) +
+  geom_point(color = "tomato2", group=1) + 
+  labs( 
+    title = "Jumlah SO2 per Hari", 
+    subtitle = "ISPU Jakarta", 
+    caption = "Roni Yunis", 
+    x = "Tahun", 
+    y = "Jumlah" 
+  ) +
+  theme_minimal()
+so2
+```
+
+```{r}
+ggplot(data = ispufix, aes(x = Tanggal, y = so2, color = Kategori)) +
+  geom_line() +
+  labs(title = "Jumlah SO2 Berdasarkan Kategori", 
+       x = "Tanggal", 
+       y = "Partikel SO2 (μg/m3)") +
+  scale_color_manual(values = c("#0e8eff", "#0e0700", "#d19f00", "#fff80e"), 
+                     labels = c("Baik", "Sangat Tidak Sehat", "Sedang", "Tidak Sehat")) +
+  annotate("text", 
+           x = max(ispufix$Tanggal), 
+           y = mean(ispufix$so2), label = "SO2") +
+  theme_minimal()
+  
+```
+
+### - Jumlah Partikel O3
+
+```{r}
+o3 <- ispufix %>% 
+  ggplot(aes(x = Tanggal, y = o3)) +
+  geom_point(color = "blue", group=1) + 
+  labs( 
+    title = "Jumlah O3 per Hari", 
+    subtitle = "ISPU Jakarta", 
+    caption = "Roni Yunis", 
+    x = "Tahun", 
+    y = "Jumlah" 
+  ) +
+  theme_minimal()
+o3
+```
+
+```{r}
+ggplot(data = ispufix, aes(x = Tanggal, y = o3, color = Kategori)) +
+  geom_line() +
+  labs(title = "Jumlah O3 Berdasarkan Kategori", 
+       x = "Tanggal", 
+       y = "Partikel O3 (μg/m3)") +
+  scale_color_manual(values = c("#0e8eff", "#0e0700", "#d19f00", "#fff80e"), 
+                     labels = c("Baik", "Sangat Tidak Sehat", "Sedang", "Tidak Sehat")) +
+  annotate("text", 
+           x = max(ispufix$Tanggal), 
+           y = mean(ispufix$o3), label = "O3") +
+  theme_minimal()
+  
+```
+
+## d. Menghitung Total Partikel Polusi Udara Per Bulan
+
+### - Total PM10 dan Visualisasi Jumlah PM10 per Bulan
+
+```{r}
+pm10tot <- ispufix %>% 
+  mutate(first_date_month = floor_date(Tanggal, unit = "month")) %>% 
+  group_by(first_date_month) %>% 
+  summarise(jumlahPM10 = sum (pm10))
+pm10tot
+```
+
+```{r}
+ggplot(data = pm10tot, aes(x = first_date_month, y = jumlahPM10, color = "PM10")) +
+geom_line() +
+labs(title = "Jumlah PM10 per Bulan",
+x = "",
+y = "Jumlah PM10 (μg/m3)") +
+theme_minimal() +
+scale_x_date(date_labels = "%Y", date_breaks = "1 year") +
+scale_color_manual(values = c("#0e8eff"), labels = c("PM10"))
+```
+
+### - Total CO dan Visualisasi Jumlah CO per Bulan
+
+```{r}
+cotot <- ispufix %>% 
+  mutate(first_date_month = floor_date(Tanggal, unit = "month")) %>% 
+  group_by(first_date_month) %>% 
+  summarise(jumlahCO = sum (co))
+cotot
+```
+
+```{r}
+ggplot(data = cotot, aes(x = first_date_month, y = jumlahCO, color = "CO")) +
+geom_line() +
+labs(title = "Jumlah CO per Bulan",
+x = "",
+y = "Jumlah CO (μg/m3)") +
+theme_minimal() +
+scale_x_date(date_labels = "%Y", date_breaks = "1 year") +
+scale_color_manual(values = c("#0e0700"), labels = c("CO"))
+```
+
+### - Total O3 dan Visualisasi Jumlah O3 per Bulan
+
+```{r}
+o3tot <- ispufix %>% 
+  mutate(first_date_month = floor_date(Tanggal, unit = "month")) %>% 
+  group_by(first_date_month) %>% 
+  summarise(jumlahO3 = sum (o3))
+o3tot
+```
+
+```{r}
+ggplot(data = o3tot, aes(x = first_date_month, y = jumlahO3, color = "O3")) +
+geom_line() +
+labs(title = "Jumlah O3 per Bulan",
+x = "",
+y = "Jumlah O3 (μg/m3)") +
+theme_minimal() +
+scale_x_date(date_labels = "%Y", date_breaks = "1 year") +
+scale_color_manual(values = c("#d19f00"), labels = c("O3"))
+```
+
+### - Total NO2 dan Visualiasi Jumlah NO2 per Bulan
+
+```{r}
+no2tot <- ispufix %>% 
+  mutate(first_date_month = floor_date(Tanggal, unit = "month")) %>% 
+  group_by(first_date_month) %>% 
+  summarise(jumlahNO2 = sum (no2))
+no2tot
+```
+
+```{r}
+ggplot(data = no2tot, aes(x = first_date_month, y = jumlahNO2, color = "NO2")) +
+geom_line() +
+labs(title = "Jumlah NO2 per Bulan",
+x = "",
+y = "Jumlah NO2 (μg/m3)") +
+theme_minimal() +
+scale_x_date(date_labels = "%Y", date_breaks = "1 year") +
+scale_color_manual(values = c("#30e97f"), labels = c("NO2"))
+```
+
+### - Total SO2 dan Visualisasi Jumlah SO2 per Bulan
+
+```{r}
+so2tot <- ispufix %>% 
+  mutate(first_date_month = floor_date(Tanggal, unit = "month")) %>% 
+  group_by(first_date_month) %>% 
+  summarise(jumlahSO2 = sum (so2))
+so2tot
+```
+
+```{r}
+ggplot(data = so2tot, aes(x = first_date_month, y = jumlahSO2, color = "SO2")) +
+geom_line() +
+labs(title = "Jumlah SO2 per Bulan",
+x = "",
+y = "Jumlah SO2 (μg/m3)") +
+theme_minimal() +
+scale_x_date(date_labels = "%Y", date_breaks = "1 year") +
+scale_color_manual(values = c("blue"), labels = c("SO2"))
+```
+
+### - Visualisasi Jumlah PM10, NO2, O3, SO2, dan CO per Bulan
+
+```{r}
+ggplot(data = pm10tot, aes(x = first_date_month, y = jumlahPM10, color = "PM10")) +
+geom_line() +
+geom_line(data = cotot, aes(x = first_date_month, y = jumlahCO, color = "CO")) +
+geom_line(data = o3tot, aes(x = first_date_month, y = jumlahO3, color = "O3")) +
+geom_line(data = so2tot, aes(x = first_date_month, y = jumlahSO2, color = "SO2")) +
+geom_line(data = no2tot, aes(x = first_date_month, y = jumlahNO2, color = "NO2")) +
+labs(title = "Jumlah Partikel Polusi Udara per Bulan",
+x = "Tahun",
+y = "Jumlah Partikel (μg/m3)", 
+subtitle = "Data terakhir 31 Desember 2021") +
+theme_minimal() +
+scale_x_date(date_labels = "%Y", date_breaks = "1 year") +
+scale_color_manual(values = c("#0e8eff", "#0e0700", "#d19f00", "#fff80e", "#30e97f"),
+labels = c("PM10", "CO", "O3","SO2", "NO2")) +
+theme(legend.position = "bottom")
+
+```
+
+Berdasarkan Gambar diatas bisa dilihat bahwa, rata-rata tingkat O3 dan
+SO2 relatif lebih tinggi dibandingkan dengan 3 partikel yang lainnya.
+
+### - Visualisasi Perubahan Jumlah Partikel dari Waktu ke Waktu
+
+```{r}
+ispu_par <- select(ispufix, -2, -8, -9)
+ispu_par
+```
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+ispu_par %>%
+  pivot_longer(-Tanggal, names_to = "variable", values_to = "value") %>%
+  ggplot(aes(x = Tanggal, y = value)) +
+  geom_line() + 
+  facet_grid(variable ~ ., scales = "free_y") +
+  labs(title = "Perubahan Jumlah Partikel dari Waktu ke Waktu") +
+  theme_minimal()
+```
+
+## e. Menampilkan Jumlah Partikel SO2 berdasarkan Stasiun
+
+```{r}
+ispufix %>% 
+ggplot(aes(x=Kategori, y=so2, col=Stasiun, fill=Stasiun)) +
+  geom_jitter() + 
+  geom_boxplot() +
+  labs( 
+    title = "Jumlah Partikel Polusi Udara SO2", 
+    subtitle = "Berdasarkan Kategori", 
+    caption = "ISPU DKI Jakarta", 
+    x = "Kategori", 
+    y = "Jumlah Partikel (μg/m3)" 
+  ) + 
+  theme_minimal()
+```
+
+Jumlah partikel SO2 pada masing-masing stasiun
+
+```{r}
+stasiun_so2 <- ispufix %>% 
+  group_by(Stasiun) %>% 
+  summarise(
+    totso2=sum(so2)
+  )
+stasiun_so2
+```
+
+```{r}
+# Visualiasi jumlah partikel SO2
+
+plot_stasiun <- stasiun_so2 %>% 
+  ggplot(aes(x = Stasiun, y = totso2, col = Stasiun, fill = Stasiun)) +
+  geom_point(size=3) +
+  geom_line(color = "tomato3", group=1) + 
+  labs( 
+    title = "Jumlah Partikel SO2", 
+    subtitle = "Stasiun", 
+    caption = "ISPU DKI Jakarta", 
+    x = "Stasiun", 
+    y = "Jumlah Partikel (μg/m3)" 
+  ) + 
+  theme_minimal() 
+plot_stasiun
+```
+
+Berdasakan gambar diatas bisa disimpulkan adalah jumlah partikel SO2
+yang paling banyak adalah pada Stasiun DKI4 (Lubang Buaya) dengan
+kategori yang paling banyak pada kategori sedang
+
+### - Mengambil data pada Stasiun DKI4 (Lubang Buaya)
+
+```{r}
+df_dki_4 <- subset(ispufix, Stasiun == "DKI4 (Lubang Buaya)")
+head(df_dki_4)
+```
+
+```{r}
+# Membuat tanggal berdasarkan kolom waktu (tahun, bulan, minggu, hari seminggu, dan bulan setahun)
+df_dki_4 <- df_dki_4 %>% 
+  mutate(year = year(Tanggal),
+         month = month(Tanggal),
+         day = day(Tanggal),
+         weekday = wday(Tanggal),
+         year_month = format(Tanggal, format = "%Y-%m"))
+df_dki_4
+```
+
+```{r}
+# Tingkat SO2 per Weekday
+ggplot(data = df_dki_4, aes(x = weekday, y = so2, col=weekday, fill=weekday)) +
+  geom_col() +
+  labs(title = "Tingkat SO2 Per Minggu") + # dari hari Senin s/d Minggu
+  theme_minimal()
+```
+
+Tingkat jumlah partikel SO2 yang paling tinggi sepanjang minggu adalah
+dihari Sabtu=6 dan Minggu=7
+
+```{r}
+# Tingkat SO2 per month
+ggplot(data = df_dki_4, aes(x = month, y = so2, col=month, fill=month)) +
+  geom_col() + 
+  labs(title = "Tingkat SO2 Per Bulan") + # dari bulan Januari s/d Desember
+  theme_minimal()
+```
+
+Tingkat jumlah partikel SO2 yang paling rendah ada pada bulan 2 dan
+paling tinggi pada bulan 11
+
+```{r}
+# Tingkat SO2 per Tahun
+ggplot(data = df_dki_4, aes(x = year_month, y = so2)) +
+  geom_boxplot() +
+  labs(title = "Tingkat SO2 per Tahun") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+```
+
+Pola partikel SO2 per bulan tampaknya tidak sama setiap tahunnya.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## f. Menguji Stationer Data
+
+Pengujian akan dilakukan pada data df_dki_4 dengan menggunakan uji
+Augmented Dickey-Fuller (ADF) dan Kwiatkowski Phillips Schmidt Shin
+(KPSS). ADF Test Test ini digunakan untuk memahami apakah deret tersebut
+stationer atau tidak. Ada 2 hipotesis yang bisa dikembangkan. H0: deret
+waktu tidak stationer dan memiliki beberapa struktur tergantung waktu
+*H1: deret waktu stationer dan tidak memiliki beberapa struktur
+tergantung waktu* dengan nilai p-value \< 0,05 sehingga HO ditolak, H1
+diterima
+
+KPSS test H0 dan H1 untuk uji KPSS berlawanan dengan uji ADF, sehingga
+hipotesis dalam KPSS adalah H0: deret tren stationer *H1: deret tren
+tidak stationer* dengan nilai p-value \< 0,05 sehingga HO diterima, H1
+ditolak
+
+A low p-value of the KPSS tests suggests nonstationarity. ADF test suggests lack of a unit root, hence no differencing is needed. Why would you think differencing should help? Significant values of ACF do not imply nonstationarity. Since you mention SARIMA, why don't you let auto.arima in R pick a model for you? The model will take care of stochastic and (simple forms of) deterministic trends as well as seasonality.
+
+```{r}
+adf.test(df_dki_4$so2)
+```
+
+```{r}
+kpss.test(df_dki_4$so2, null = "Level")
+```
+
+```{r}
+#differensiasi data_so2 pada stasiun DKI4
+df_dki_4_diff <- diff(df_dki_4$so2)
+
+#dropna dari data yang sudah di-differensiasi
+df_dki_4_diff <- df_dki_4_diff[!is.na(df_dki_4_diff)]
+
+```
+
+```{r}
+summary(df_dki_4_diff)
+```
+
+
+```{r}
+#plot data yang sudah di-differensiasi dan di-dropna
+ggplot(data.frame(date = 1:length(df_dki_4_diff), value = df_dki_4_diff), aes(x = date, y = value)) +
+  geom_line(color = "blue") +
+  ggtitle("Stationary timeseries")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  scale_x_continuous(name = "Hari",
+                     breaks = seq(0, length(df_dki_4_diff), by = 365))+ #periode 365 hari
+  scale_y_continuous(name = "Nilai")+
+  theme(axis.text.x=element_text(angle=60,hjust=1))+
+  theme_minimal()
+```
+
+Berdasarkan hasil kedua uji ADF dan KPSS bisa disimpulkan nilai p-value
+\< 0,05, sehingga bisa disimpulkan bahwa data deret waktu sudah
+stationer. Begitu juga dengan hasil visualiasi uji stationer bisa
+dilihat bahwa tidak terlihat tren apapun atau perubahan yang jelas dalam
+varians sehingga deret waktu sudah stationer.
+
+
+
+
+
+
+## g. Data Dekomposisi
+
+```{r}
+decom_ts <- ts(data = ispufix$so2, start = c(2016,1), end = c(2021,12), frequency = 12)
+```
+
+
+```{r}
+decom_ts %>% decompose(type = "additive") %>%
+  autoplot() + xlab("Year") +
+  ggtitle("Additive Decomposition of SO2")
+```
+```{r}
+# Classical Decomposition
+decom_ts %>% decompose(type = "multiplicative") %>%
+  autoplot() + xlab("Year") +
+  ggtitle("Multiplicative Decomposition of SO2")
+```
+
+
+```{r}
+ts_decom <- decompose(decom_ts)
+```
+
+```{r}
+ts_decom_table <- data.frame(seasonal = ts_decom$seasonal, trend = ts_decom$trend, random = ts_decom$random)
+ts_decom_table <- na.omit(ts_decom_table)
+descr(ts_decom_table)
+head(ts_decom_table)
+
+```
+
+```{r}
+ts_decom$seasonal
+```
+
+```{r}
+plot(ts_decom$seasonal)
+```
+
+```{r}
+ts_decom$figure
+```
+
+```{r}
+plot(ts_decom$figure,
+     type = 'b',
+     xlab = 'Month',
+     ylab = 'Seasonality Index',
+     col = 'blue',
+     las = 2
+)
+```
+
+```{r}
+#adjustment decomposition data
+ts_decom_adj <- decom_ts - ts_decom$seasonal
+plot(ts_decom_adj)
+```
+
+```{r}
+ts_decom_adj
+```
+
+```{r}
+descr(ts_decom_adj)
+```
+
+```{r}
+str(ts_decom_adj)
+```
+
+```{r}
+df_data <- as.data.frame(ts_decom_adj)
+df_data
+```
+
+
+# 5. Model
+
+## Model SARIMA
+
+### 1. Membagi Data menjadi data latih dan data uji
+
+```{r}
+# Konversi data menjadi data time series menggunakan data dekomposisi time series 
+dataset <- decom_ts
+plot(dataset)
+ggtsdisplay(dataset)
+```
+
+```{r}
+BoxCox.lambda(dataset)
+```
+
+```{r}
+# Membagi data menjadi data latih dan data uji
+data_train_sarima <- head(dataset, 5*12) # ambil data 5 tahun 2016-2020
+data_test_sarima <- tail(dataset, length(dataset)-length(data_train_sarima)) #ambil data 1 tahun terakhir
+data_train_sarima %>% 
+  decompose() %>% 
+  autoplot()
+```
+
+```{r}
+plot(data_train_sarima)
+```
+
+```{r}
+length(data_train_sarima)
+length(data_test_sarima)
+```
+
+```{r}
+adf.test(data_train_sarima)
+```
+
+### 2. Mengidentifikasi Diferensi
+
+#### a. Mengidentifikasi Diferensi musiman order 1
+
+```{r}
+acf(data_train_sarima, lag.max = 36)
+pacf(data_train_sarima, lag.max = 36)
+```
+
+
+```{r}
+data_train_sarima_ds <- diff(data_train_sarima, differences = 1, lag = 3)
+adf.test(data_train_sarima_ds)
+plot(data_train_sarima_ds)
+```
+
+Dari hasil diatas bisa disimpulkan bahwa data belum stationer karena
+nilai p-value \> 0,05 yaitu sebesar 0.3379.
+
+```{r}
+acf(data_train_sarima_ds, lag.max = 36)
+pacf(data_train_sarima_ds, lag.max = 36)
+```
+
+#### b. Mengidentifikasi Diferensi non-musiman order 1
+
+```{r}
+data_train_sarima_dss <- diff(data_train_sarima_ds, differences = 1)
+adf.test(data_train_sarima_dss)
+plot(data_train_sarima_dss)
+```
+
+Dari hasil diatas bisa disimpulkan bahwa data sudah stationer karena
+nilai p-value \< 0,05 yaitu sebesar 0,01.
+
+### 3. Mengidentifikasi kemungkinan model yang tepat
+
+```{r}
+par(mfrow = c(2,1))
+acf(data_train_sarima_ds, lag.max = 36)
+pacf(data_train_sarima_ds, lag.max = 36)
+```
+
+```{r}
+data_train_sarima_dss
+```
+
+### 4. Fit Model
+
+Menentukan model prediksi yang terbaik yang dapat dilihat dari nilai
+performansi Akaike Information Criteria (AIC) dan nilai signifikan
+(p-value). Model yang lebih baik akan memiliki nilai AIC yang lebih
+rendah
+
+#### a. Fit Model 1
+
+
+
+```{r}
+# Fit Model 1
+fitmodel1 <- Arima (data_train_sarima,
+                    order = c(3,1,1),
+                    seasonal = c(0,1,0),
+                    lambda = NULL,
+                    include.constant = TRUE)
+coeftest(fitmodel1)
+checkresiduals(fitmodel1)
+ggtsdisplay(fitmodel1$residuals)
+summary(fitmodel1)
+```
+
+```{r}
+Box.test(residuals(fitmodel1), lag = 12, type = "Ljung-Box")
+```
+
+Berdasarkan hasil diatas bisa dilihat bahwa, semua nilai signifikan.
+Secara keseluruhan dari model sudah cukup signifikan dengan nilai
+p-value 0,000000126 dimana nilai signifikan \< 0,05 dan nilai AIC =
+455.9. Sekarang kita akan lakukan fit model yang kedua dengan tujuan
+untuk mendapatkan nilai yang lebih baik.
+
+#### b. Fit Model 2
+
+```{r}
+# Fit Model 2
+fitmodel2 <- Arima (data_train_sarima,
+                    order = c(2,1,2),
+                    seasonal = c(0,0,1),
+                    lambda = NULL,
+                    include.constant = TRUE)
+coeftest(fitmodel2)
+checkresiduals(fitmodel2)
+ggtsdisplay(fitmodel2$residuals)
+summary(fitmodel2)
+```
+
+```{r}
+Box.test(residuals(fitmodel2), lag = 12, type = "Ljung-Box")
+```
+
+Berdasarkan fit model yang ke 2 didapatkan bahwa secara keseluruhan
+model sudah signitifan dengan nilai p-value 0,0000001652 dimana nilai
+signifikan \< 0,05 dan nilai AIC 416.95. Kita akan lanjutkan melakukan
+fit model yang ke 3.
+
+#### c. Fit Model 3
+
+```{r}
+# Fit Model 3
+fitmodel3 <- Arima (data_train_sarima,
+                    order = c(2,1,1),
+                    seasonal = c(0,1,1),
+                    lambda = NULL,
+                    include.constant = TRUE)
+coeftest(fitmodel3)
+checkresiduals(fitmodel3)
+ggtsdisplay(fitmodel3$residuals)
+summary(fitmodel3)
+```
+
+```{r}
+Box.test(residuals(fitmodel3), lag = 12, type = "Ljung-Box")
+```
+
+Berdasarkan fit model yang ke 3 didapatkan bahwa secara keseluruhan
+model sudah signitifan dengan nilai p-value 0,00026 dimana nilai
+signifikan \< 0,05 dan nilai AIC = 333,57.
+
+#### d. Menentukan model terbaik dengan auto.arima
+
+
+
+```{r}
+# Menentukan model terbaik
+modelautoarima_so2 <- auto.arima(
+  data_train_sarima,
+  d=1,
+  stepwise = FALSE,
+  approximation = FALSE,
+  trace = TRUE)
+modelautoarima_so2
+
+```
+```{r}
+coeftest(modelautoarima_so2)
+```
+
+```{r}
+Box.test(residuals(modelautoarima_so2), lag = 12, type = "Ljung-Box")
+```
+
+
+#### e. Fit Model 4
+```{r}
+# Fit Model 4
+fitmodel4 <- Arima (data_train_sarima,
+                    order = c(2,1,1),
+                    seasonal = c(2,1,0),
+                    lambda = NULL,
+                    include.constant = TRUE)
+coeftest(fitmodel4)
+checkresiduals(fitmodel4)
+ggtsdisplay(fitmodel4$residuals)
+summary(fitmodel4)
+```
+
+```{r}
+Box.test(residuals(fitmodel4), lag = 12, type = "Ljung-Box")
+```
+
+```{r}
+hasil_df <- data.frame(
+  id = c(1:5),
+  Model = c("Model1(2,2,0)(0,0,1)", "Model2(2,2,1)(0,0,1)", "Model3(2,2,1)(0,1,1)", "Model4(2,1,1)(2,1,0)","AutoArima(2,0,1)(0,0,1)"),
+  AIC = c(fitmodel1$aic, fitmodel2$aic, fitmodel3$aic, fitmodel4$aic, modelautoarima_so2$aic),
+  BIC = c(fitmodel1$bic, fitmodel2$bic, fitmodel3$bic, fitmodel4$bic, modelautoarima_so2$bic),
+   stringsAsFactors = FALSE
+)
+hasil_df
+```
+
+Berdasarkan modelautoarima didapatkan model (2,0,1)(0,0,1) dengan nilai
+AIC = 370.41. Sehingga dapat disimpulkan bahwa performa fitmodel1 dengan
+nilai AIC = 455.90, fitmodel2 dengan nilai AIC = 416.94, dan fitmodel3
+dengan nilai AIC = 333.56, dan fitmodel4 dengan nilai AIC 310.53.
+Berdasarkan kelima model tersebut, maka perfomansi model *fitmodel4*
+yang terbaik yaitu model (2,1,1)(2,1,0) dengan nilai AIC sebesar 310.53
+dan nilai p-value untuk keseluruhan signitifkan.
+
+### 5. Forecasting dengan data latih
+
+```{r}
+# Menggunakan fitmodel4
+fcast <- forecast(fitmodel4, h=5*12)
+fcast
+autoplot(fcast)
+```
+```{r}
+
+# Menggunakan fitmodel4
+fcast_2 <- forecast(modelautoarima_so2, h=5*12)
+fcast_2
+autoplot(fcast_2)
+
+```
+
+```{r}
+# Menggunakan fitmodel4
+fcast_3 <- forecast(fitmodel1, h=5*12)
+fcast_3
+autoplot(fcast_3)
+```
+
+
+```{r}
+# membuat prediksi untuk data uji dengan menggunakan model terbaik
+predictSarima <- predict(fcast, data_test_sarima)
+autoplot(predictSarima)
+```
+
+```{r}
+# membuat prediksi untuk data uji dengan menggunakan model terbaik
+predictSarima_3 <- predict(fcast_3, data_test_sarima)
+autoplot(predictSarima_3)
+```
+
+```{r}
+# visualisasi hasil forecast dari model multiplicative
+data_test_sarima %>% 
+  autoplot()+
+  autolayer(modelautoarima_so2$fitted, series = "Auto-Arima(2,0,1)(0,0,1)")+
+  autolayer(data_test_sarima, series = "data test") +
+  autolayer(fitmodel1$fitted, series = "Model-1(2,2,0)(0,0,1)")+
+  autolayer(fitmodel2$fitted, series = "Model-2(2,2,1)(0,0,1)")+
+  autolayer(fitmodel3$fitted, series = "Model-3(2,2,1)(0,1,1)")+
+  autolayer(fitmodel4$fitted, series = "Model-4(2,1,1)(2,1,0)")+
+  autolayer(predictSarima$mean, series = "forecast")+
+   autolayer(predictSarima_3$mean, series = "forecast3")
+```
+```{r}
+# visualisasi hasil forecast dari model multiplicative
+data_train_sarima %>% 
+  autoplot()+
+  autolayer(modelautoarima_so2$fitted, series = "Auto-Arima(2,0,1)(0,0,1)")+
+  autolayer(data_test_sarima, series = "data test") +
+  autolayer(fitmodel1$fitted, series = "Model-1(2,2,0)(0,0,1)")+
+  autolayer(fitmodel2$fitted, series = "Model-2(2,2,1)(0,0,1)")+
+  autolayer(fitmodel3$fitted, series = "Model-3(2,2,1)(0,1,1)")+
+  autolayer(fitmodel4$fitted, series = "Model-4(2,1,1)(2,1,0)")+
+  autolayer(predictSarima$mean, series = "forecast")
+```
+```{r}
+autoplot(predictSarima$mean)+
+    autolayer(data_train_sarima, series = "forecast")+
+    autolayer(data_train_sarima_ds, series = "forecast")
+    
+```
+
+
+
+### 6. Evaluasi Model
+
+```{r}
+# Mean squared error (MSE)
+MSESarima <- mean((data_test_sarima - predictSarima$mean)^2)
+MSESarima
+```
+
+```{r}
+# Root mean squared error (RMSE)
+RMSESarima <- sqrt(MSESarima)
+RMSESarima
+```
+
+```{r}
+# Mean absolute error (MAE)
+MAESarima <- mean(abs(data_test_sarima - predictSarima$mean))
+MAESarima
+```
+
+```{r}
+# Mean absolute percentage error (MAPE)
+MAPESarima <- mean(abs(data_test_sarima - predictSarima$mean) / data_test_sarima)
+MAPESarima
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## g. Data Dekomposisi
+
+```{r}
+decom_ts_pm10 <- ts(data = ispufix$pm10, start = c(2016,1), end = c(2021,12), frequency = 12)
+```
+
+```{r}
+# Classical Decomposition
+decom_ts_pm10 %>% decompose(type = "multiplicative") %>%
+  autoplot() + xlab("Year") +
+  ggtitle("Multiplicative Decomposition of PM10")
+```
+
+```{r}
+decom_ts_pm10 %>% decompose(type = "additive") %>%
+  autoplot() + xlab("Year") +
+  ggtitle("Additive Decomposition of PM10")
+```
+
+```{r}
+ts_decom_pm10 <- decompose(decom_ts_pm10)
+```
+
+```{r}
+ts_decom_table_pm10 <- data.frame(seasonal = ts_decom_pm10$seasonal, trend = ts_decom_pm10$trend, random = ts_decom_pm10$random)
+ts_decom_table_pm10 <- na.omit(ts_decom_table_pm10)
+descr(ts_decom_table_pm10)
+head(ts_decom_table_pm10)
+
+```
+
+```{r}
+ts_decom_pm10$seasonal
+```
+
+```{r}
+plot(ts_decom_pm10$seasonal)
+```
+
+```{r}
+ts_decom_pm10$figure
+```
+
+```{r}
+plot(ts_decom_pm10$figure,
+     type = 'b',
+     xlab = 'Month',
+     ylab = 'Seasonality Index',
+     col = 'blue',
+     las = 2
+)
+```
+
+```{r}
+#adjustment decomposition data
+ts_decom_adj_pm10 <- decom_ts_pm10 - ts_decom_pm10$seasonal
+plot(ts_decom_adj_pm10)
+```
+
+```{r}
+ts_decom_adj_pm10
+```
+
+```{r}
+descr(ts_decom_adj_pm10)
+```
+
+```{r}
+str(ts_decom_adj_pm10)
+```
+
+```{r}
+df_data_pm10 <- as.data.frame(ts_decom_adj_pm10)
+df_data_pm10
+```
+```{r}
+ggplot(df_data_pm10)
+```
+
+
+# 5. Model
+
+## Model SARIMA
+
+### 1. Membagi Data menjadi data latih dan data uji
+
+```{r}
+# Konversi data menjadi data time series menggunakan data dekomposisi time series 
+dataset_pm10 <- decom_ts_pm10
+plot(dataset_pm10)
+ggtsdisplay(dataset_pm10)
+```
+
+```{r}
+BoxCox.lambda(dataset_pm10)
+```
+
+```{r}
+# Membagi data menjadi data latih dan data uji
+data_train_sarima_pm10 <- head(dataset_pm10, 5*12) # ambil data 5 tahun 2016-2020
+data_test_sarima_pm10 <- tail(dataset_pm10, length(dataset_pm10)-length(data_train_sarima_pm10)) #ambil data 1 tahun terakhir
+data_train_sarima_pm10 %>% 
+  decompose() %>% 
+  autoplot()
+```
+
+```{r}
+plot(data_train_sarima_pm10)
+```
+
+```{r}
+length(data_train_sarima_pm10)
+length(data_test_sarima_pm10)
+```
+
+### 2. Mengidentifikasi Diferensi
+
+#### a. Mengidentifikasi Diferensi musiman order 1
+
+```{r}
+data_train_sarima_ds_pm10 <- diff(data_train_sarima_pm10, differences = 1, lag = 12)
+adf.test(data_train_sarima_ds_pm10)
+plot(data_train_sarima_ds_pm10)
+```
+
+Dari hasil diatas bisa disimpulkan bahwa data belum stationer karena
+nilai p-value \> 0,05 yaitu sebesar 0,4503.
+
+#### b. Mengidentifikasi Diferensi non-musiman order 1
+
+```{r}
+data_train_sarima_dss_pm10 <- diff(data_train_sarima_ds_pm10, differences = 1)
+adf.test(data_train_sarima_dss_pm10)
+plot(data_train_sarima_dss_pm10)
+```
+
+Dari hasil diatas bisa disimpulkan bahwa data sudah stationer karena
+nilai p-value \< 0,05 yaitu sebesar 0,01.
+
+### 3. Mengidentifikasi kemungkinan model yang tepat
+
+```{r}
+par(mfrow = c(2,1))
+acf(data_train_sarima_ds_pm10, lag.max = 36)
+pacf(data_train_sarima_ds_pm10, lag.max = 36)
+```
+
+```{r}
+data_train_sarima_dss_pm10
+```
+
+### 4. Fit Model
+
+Menentukan model prediksi yang terbaik yang dapat dilihat dari nilai
+performansi Akaike Information Criteria (AIC) dan nilai signifikan
+(p-value). Model yang lebih baik akan memiliki nilai AIC yang lebih
+rendah
+
+#### a. Fit Model 1
+
+
+```{r}
+# Fit Model 1
+fitmodel1_pm10 <- Arima (data_train_sarima_dss_pm10,
+                    order = c(2,2,0),
+                    seasonal = c(0,0,1),
+                    lambda = NULL,
+                    include.constant = TRUE)
+coeftest(fitmodel1_pm10)
+checkresiduals(fitmodel1_pm10)
+ggtsdisplay(fitmodel1_pm10$residuals)
+summary(fitmodel1_pm10)
+```
+
+```{r}
+Box.test(residuals(fitmodel1_pm10), lag = 12, type = "Ljung-Box")
+```
+
+Berdasarkan hasil diatas bisa dilihat bahwa, semua nilai signifikan.
+Secara keseluruhan dari model sudah cukup signifikan dengan nilai
+p-value 0,000000126 dimana nilai signifikan \< 0,05 dan nilai AIC =
+455.9. Sekarang kita akan lakukan fit model yang kedua dengan tujuan
+untuk mendapatkan nilai yang lebih baik.
+
+#### b. Fit Model 2
+
+```{r}
+# Fit Model 2
+fitmodel2_pm10 <- Arima (data_train_sarima_dss_pm10,
+                    order = c(2,2,1),
+                    seasonal = c(0,0,1),
+                    lambda = NULL,
+                    include.constant = TRUE)
+coeftest(fitmodel2_pm10)
+checkresiduals(fitmodel2_pm10)
+ggtsdisplay(fitmodel2_pm10$residuals)
+summary(fitmodel2_pm10)
+```
+
+```{r}
+Box.test(residuals(fitmodel2_pm10), lag = 12, type = "Ljung-Box")
+```
+
+Berdasarkan fit model yang ke 2 didapatkan bahwa secara keseluruhan
+model sudah signitifan dengan nilai p-value 0,0000001652 dimana nilai
+signifikan \< 0,05 dan nilai AIC 416.95. Kita akan lanjutkan melakukan
+fit model yang ke 3.
+
+#### c. Fit Model 3
+
+```{r}
+# Fit Model 3
+fitmodel3_pm10 <- Arima (data_train_sarima_dss_pm10,
+                    order = c(2,2,1),
+                    seasonal = c(0,1,1),
+                    lambda = NULL,
+                    include.constant = TRUE)
+coeftest(fitmodel3_pm10)
+checkresiduals(fitmodel3_pm10)
+ggtsdisplay(fitmodel3_pm10$residuals)
+summary(fitmodel3_pm10)
+```
+
+```{r}
+Box.test(residuals(fitmodel3_pm10), lag = 12, type = "Ljung-Box")
+```
+
+Berdasarkan fit model yang ke 3 didapatkan bahwa secara keseluruhan
+model sudah signitifan dengan nilai p-value 0,00026 dimana nilai
+signifikan \< 0,05 dan nilai AIC = 333,57.
+
+#### d. Menentukan model terbaik dengan auto.arima
+
+```{r}
+# Menentukan model terbaik
+modelautoarima_pm10 <- auto.arima(
+  data_train_sarima_pm10,
+  d=1,
+  stepwise = FALSE,
+  approximation = FALSE,
+  trace = TRUE)
+modelautoarima_pm10
+
+```
+
+```{r}
+Box.test(residuals(modelautoarima_pm10), lag = 12, type = "Ljung-Box")
+```
+
+#### e. Fit Model 4
+```{r}
+# Fit Model 4
+fitmodel4_pm10 <- Arima (data_train_sarima_pm10,
+                    order = c(2,1,1),
+                    seasonal = c(2,1,0),
+                    lambda = NULL,
+                    include.constant = TRUE)
+coeftest(fitmodel4_pm10)
+checkresiduals(fitmodel4_pm10)
+ggtsdisplay(fitmodel4_pm10$residuals)
+summary(fitmodel4_pm10)
+```
+
+```{r}
+Box.test(residuals(fitmodel4_pm10), lag = 12, type = "Ljung-Box")
+```
+```{r}
+# Fit Model 4
+fitmodel4_2_pm10 <- Arima (data_train_sarima_pm10,
+                    order = c(2,1,1),
+                    seasonal = c(2,1,0),
+                    lambda = 0,
+                    include.constant = TRUE)
+coeftest(fitmodel4_2_pm10)
+checkresiduals(fitmodel4_2_pm10)
+ggtsdisplay(fitmodel4_2_pm10$residuals)
+summary(fitmodel4_2_pm10)
+```
+
+```{r}
+Box.test(residuals(fitmodel4_2_pm10), lag = 12, type = "Ljung-Box")
+```
+
+
+```{r}
+hasil_df_pm10 <- data.frame(
+  id = c(1:5),
+  Model = c("Model1(2,2,0)(0,0,1)", "Model2(2,2,1)(0,0,1)", "Model3(2,2,1)(0,1,1)", "Model4(2,1,1)(2,1,0)","AutoArima(2,0,1)(0,0,1)"),
+  AIC = c(fitmodel1_pm10$aic, fitmodel2_pm10$aic, fitmodel3_pm10$aic, fitmodel4_pm10$aic, modelautoarima_pm10$aic),
+  BIC = c(fitmodel1_pm10$bic, fitmodel2_pm10$bic, fitmodel3_pm10$bic, fitmodel4_pm10$bic, modelautoarima_pm10$bic),
+   stringsAsFactors = FALSE
+)
+hasil_df_pm10
+```
+
+Berdasarkan modelautoarima didapatkan model (2,0,1)(0,0,1) dengan nilai
+AIC = 370.41. Sehingga dapat disimpulkan bahwa performa fitmodel1 dengan
+nilai AIC = 455.90, fitmodel2 dengan nilai AIC = 416.94, dan fitmodel3
+dengan nilai AIC = 333.56, dan fitmodel4 dengan nilai AIC 310.53.
+Berdasarkan kelima model tersebut, maka perfomansi model *fitmodel4*
+yang terbaik yaitu model (2,1,1)(2,1,0) dengan nilai AIC sebesar 310.53
+dan nilai p-value untuk keseluruhan signitifkan.
+
+### 5. Forecasting dengan data latih
+
+```{r}
+# Menggunakan fitmodel4
+fcast_pm10 <- forecast(fitmodel4_2_pm10, h=5*12)
+fcast_pm10
+autoplot(fcast_pm10)
+```
+```{r}
+# Menggunakan fitmodel4
+fcast_pm10_3 <- forecast(fitmodel4_pm10, h=5*12)
+fcast_pm10_3
+autoplot(fcast_pm10_3)
+```
+
+```{r}
+# Menggunakan fitmodel4
+fcast_pm10_2 <- forecast(modelautoarima_pm10, h=5*12)
+fcast_pm10_2
+autoplot(fcast_pm10_2)
+```
+
+
+```{r}
+# membuat prediksi untuk data uji dengan menggunakan model terbaik
+predictSarima_pm10 <- predict(fcast_pm10, data_test_sarima_pm10)
+autoplot(predictSarima_pm10)
+```
+
+```{r}
+# membuat prediksi untuk data uji dengan menggunakan model terbaik
+predictSarima_pm10_2 <- predict(fcast_pm10_2, data_test_sarima_pm10)
+autoplot(predictSarima_pm10_2)
+```
+```{r}
+# membuat prediksi untuk data uji dengan menggunakan model terbaik
+predictSarima_pm10_3 <- predict(fcast_pm10_3, data_test_sarima_pm10)
+autoplot(predictSarima_pm10_3)
+```
+
+
+
+
+```{r}
+# visualisasi hasil forecast dari model multiplicative
+data_test_sarima_pm10 %>% 
+  autoplot()+
+  autolayer(modelautoarima_pm10$fitted, series = "Auto-Arima(2,0,1)(0,0,1)")+
+  autolayer(data_test_sarima_pm10, series = "data test") +
+  autolayer(fitmodel1_pm10$fitted, series = "Model-1(2,2,0)(0,0,1)")+
+  autolayer(fitmodel2_pm10$fitted, series = "Model-2(2,2,1)(0,0,1)")+
+  autolayer(fitmodel3_pm10$fitted, series = "Model-3(2,2,1)(0,1,1)")+
+  autolayer(fitmodel4_pm10$fitted, series = "Model-4(2,1,1)(2,1,0)")+
+  autolayer(predictSarima_pm10$mean, series = "forecast")
+  
+```
+```{r}
+# visualisasi hasil forecast dari model multiplicative
+data_train_sarima_pm10 %>% 
+  autoplot()+
+  autolayer(modelautoarima_pm10$fitted, series = "Auto-Arima(2,0,1)(0,0,1)")+
+  autolayer(data_test_sarima_pm10, series = "data test") +
+  autolayer(fitmodel1_pm10$fitted, series = "Model-1(2,2,0)(0,0,1)")+
+  autolayer(fitmodel2_pm10$fitted, series = "Model-2(2,2,1)(0,0,1)")+
+  autolayer(fitmodel3_pm10$fitted, series = "Model-3(2,2,1)(0,1,1)")+
+  autolayer(fitmodel4_pm10$fitted, series = "Model-4(2,1,1)(2,1,0)")+
+  autolayer(predictSarima_pm10$mean, series = "forecast")+
+   autolayer(predictSarima_pm10_2$mean, series = "asdasd")
+
+
+```
+
+
+
+### 6. Evaluasi Model
+
+```{r}
+# Mean squared error (MSE)
+MSESarima_pm10 <- mean((data_test_sarima_pm10 - predictSarima_pm10$mean)^2)
+MSESarima_pm10
+```
+
+```{r}
+# Root mean squared error (RMSE)
+RMSESarima_pm10 <- sqrt(MSESarima_pm10)
+RMSESarima_pm10
+```
+
+```{r}
+# Mean absolute error (MAE)
+MAESarima_pm10 <- mean(abs(data_test_sarima_pm10 - predictSarima_pm10$mean))
+MAESarima_pm10
+```
+
+```{r}
+# Mean absolute percentage error (MAPE)
+MAPESarima_pm10 <- mean(abs(data_test_sarima_pm10 - predictSarima_pm10$mean) / data_test_sarima_pm10)
+MAPESarima_pm10
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## g. Data Dekomposisi
+
+```{r}
+decom_ts_co <- ts(data = ispufix$co, start = c(2016,1), end = c(2021,12), frequency = 12)
+```
+
+```{r}
+# Classical Decomposition
+decom_ts_co %>% decompose(type = "multiplicative") %>%
+  autoplot() + xlab("Year") +
+  ggtitle("Multiplicative Decomposition of CO")
+```
+
+```{r}
+decom_ts_co %>% decompose(type = "additive") %>%
+  autoplot() + xlab("Year") +
+  ggtitle("Additive Decomposition of CO")
+```
+
+```{r}
+ts_decom_co <- decompose(decom_ts_co)
+```
+
+```{r}
+ts_decom_table_co <- data.frame(seasonal = ts_decom_co$seasonal, trend = ts_decom_co$trend, random = ts_decom_co$random)
+ts_decom_table_co <- na.omit(ts_decom_table_co)
+descr(ts_decom_table_co)
+head(ts_decom_table_co)
+
+```
+
+```{r}
+ts_decom_co$seasonal
+```
+
+```{r}
+plot(ts_decom_co$seasonal)
+```
+
+```{r}
+ts_decom_co$figure
+```
+
+```{r}
+plot(ts_decom_co$figure,
+     type = 'b',
+     xlab = 'Month',
+     ylab = 'Seasonality Index',
+     col = 'blue',
+     las = 2
+)
+```
+
+```{r}
+#adjustment decomposition data
+ts_decom_adj_co <- decom_ts_co - ts_decom_co$seasonal
+plot(ts_decom_adj_co)
+```
+
+```{r}
+ts_decom_adj_co
+```
+
+```{r}
+descr(ts_decom_adj_co)
+```
+
+```{r}
+str(ts_decom_adj_co)
+```
+
+```{r}
+df_data_co <- as.data.frame(ts_decom_adj_co)
+df_data_co
+```
+
+
+# 5. Model
+
+## Model SARIMA
+
+### 1. Membagi Data menjadi data latih dan data uji
+
+```{r}
+# Konversi data menjadi data time series menggunakan data dekomposisi time series 
+dataset_co <- decom_ts_co
+plot(dataset_co)
+ggtsdisplay(dataset_co)
+```
+
+```{r}
+BoxCox.lambda(dataset_co)
+```
+
+```{r}
+# Membagi data menjadi data latih dan data uji
+data_train_sarima_co <- head(dataset_co, 5*12) # ambil data 5 tahun 2016-2020
+data_test_sarima_co <- tail(dataset_co, length(dataset_co)-length(data_train_sarima_co)) #ambil data 1 tahun terakhir
+data_train_sarima_co %>% 
+  decompose() %>% 
+  autoplot()
+```
+
+```{r}
+plot(data_train_sarima_co)
+```
+
+```{r}
+length(data_train_sarima_co)
+length(data_test_sarima_co)
+```
+
+### 2. Mengidentifikasi Diferensi
+
+#### a. Mengidentifikasi Diferensi musiman order 1
+
+
+
+```{r}
+adf.test(data_train_sarima_co)
+```
+
+```{r}
+data_train_sarima_ds_co <- diff(data_train_sarima_co, differences = 1, lag = 12)
+adf.test(data_train_sarima_ds_co)
+plot(data_train_sarima_ds_co)
+```
+
+Dari hasil diatas bisa disimpulkan bahwa data belum stationer karena
+nilai p-value \> 0,05 yaitu sebesar 0,4503.
+
+#### b. Mengidentifikasi Diferensi non-musiman order 1
+
+```{r}
+data_train_sarima_dss_co <- diff(data_train_sarima_ds_co, differences = 1)
+adf.test(data_train_sarima_dss_co)
+plot(data_train_sarima_dss_co)
+```
+
+Dari hasil diatas bisa disimpulkan bahwa data sudah stationer karena
+nilai p-value \< 0,05 yaitu sebesar 0,01.
+
+### 3. Mengidentifikasi kemungkinan model yang tepat
+
+```{r}
+par(mfrow = c(2,1))
+acf(data_train_sarima_dss_co, lag.max = 36)
+pacf(data_train_sarima_dss_co, lag.max = 36)
+```
+
+```{r}
+data_train_sarima_dss_co
+```
+
+### 4. Fit Model
+
+Menentukan model prediksi yang terbaik yang dapat dilihat dari nilai
+performansi Akaike Information Criteria (AIC) dan nilai signifikan
+(p-value). Model yang lebih baik akan memiliki nilai AIC yang lebih
+rendah
+
+#### a. Fit Model 1
+
+
+```{r}
+# Fit Model 1
+fitmodel1_co <- Arima (data_train_sarima_co,
+                    order = c(2,1,0),
+                    seasonal = c(0,1,1),
+                    lambda = 0,
+                    include.constant = TRUE)
+coeftest(fitmodel1_co)
+checkresiduals(fitmodel1_co)
+ggtsdisplay(fitmodel1_co$residuals)
+summary(fitmodel1_co)
+```
+
+```{r}
+Box.test(residuals(fitmodel1_co), lag = 12, type = "Ljung-Box")
+```
+
+Berdasarkan hasil diatas bisa dilihat bahwa, semua nilai signifikan.
+Secara keseluruhan dari model sudah cukup signifikan dengan nilai
+p-value 0,000000126 dimana nilai signifikan \< 0,05 dan nilai AIC =
+455.9. Sekarang kita akan lakukan fit model yang kedua dengan tujuan
+untuk mendapatkan nilai yang lebih baik.
+
+#### b. Fit Model 2
+
+```{r}
+# Fit Model 2
+fitmodel2_co <- Arima (data_train_sarima_co,
+                    order = c(2,2,1),
+                    seasonal = c(0,1,1),
+                    lambda = 0,
+                    include.constant = TRUE)
+coeftest(fitmodel2_co)
+checkresiduals(fitmodel2_co)
+ggtsdisplay(fitmodel2_co$residuals)
+summary(fitmodel2_co)
+```
+
+```{r}
+Box.test(residuals(fitmodel2_co), lag = 12, type = "Ljung-Box")
+```
+
+Berdasarkan fit model yang ke 2 didapatkan bahwa secara keseluruhan
+model sudah signitifan dengan nilai p-value 0,0000001652 dimana nilai
+signifikan \< 0,05 dan nilai AIC 416.95. Kita akan lanjutkan melakukan
+fit model yang ke 3.
+
+#### c. Fit Model 3
+
+```{r}
+# Fit Model 3
+fitmodel3_co <- Arima (data_train_sarima_co,
+                    order = c(2,2,1),
+                    seasonal = c(1,0,1),
+                    lambda = 0,
+                    include.constant = TRUE)
+coeftest(fitmodel3_co)
+checkresiduals(fitmodel3_co)
+ggtsdisplay(fitmodel3_co$residuals)
+summary(fitmodel3_co)
+```
+
+```{r}
+Box.test(residuals(fitmodel3_co), lag = 12, type = "Ljung-Box")
+```
+
+Berdasarkan fit model yang ke 3 didapatkan bahwa secara keseluruhan
+model sudah signitifan dengan nilai p-value 0,00026 dimana nilai
+signifikan \< 0,05 dan nilai AIC = 333,57.
+
+#### d. Menentukan model terbaik dengan auto.arima
+
+```{r}
+# Menentukan model terbaik
+modelautoarima_co <- auto.arima(
+  data_train_sarima_dss_co,
+  d=2,
+  stepwise = FALSE,
+  approximation = FALSE,
+  trace = TRUE)
+modelautoarima_co
+
+```
+
+```{r}
+Box.test(residuals(modelautoarima_co), lag = 12, type = "Ljung-Box")
+```
+
+#### e. Fit Model 4
+```{r}
+# Fit Model 4
+fitmodel4_co <- Arima (data_train_sarima_co,
+                    order = c(2,1,1),
+                    seasonal = c(2,1,0),
+                    lambda = 0,
+                    include.constant = TRUE)
+coeftest(fitmodel4_co)
+checkresiduals(fitmodel4_co)
+ggtsdisplay(fitmodel4_co$residuals)
+summary(fitmodel4_co)
+```
+
+```{r}
+Box.test(residuals(fitmodel4_co), lag = 12, type = "Ljung-Box")
+```
+
+```{r}
+hasil_df_co <- data.frame(
+  id = c(1:5),
+  Model = c("Model1(2,2,0)(0,0,1)", "Model2(2,2,1)(0,0,1)", "Model3(2,2,1)(0,1,1)", "Model4(2,1,1)(2,1,0)","AutoArima(2,0,1)(0,0,1)"),
+  AIC = c(fitmodel1_co$aic, fitmodel2_co$aic, fitmodel3_co$aic, fitmodel4_co$aic, modelautoarima_co$aic),
+  BIC = c(fitmodel1_co$bic, fitmodel2_co$bic, fitmodel3_co$bic, fitmodel4_co$bic, modelautoarima_co$bic),
+   stringsAsFactors = FALSE
+)
+hasil_df_co
+```
+
+Berdasarkan modelautoarima didapatkan model (2,0,1)(0,0,1) dengan nilai
+AIC = 370.41. Sehingga dapat disimpulkan bahwa performa fitmodel1 dengan
+nilai AIC = 455.90, fitmodel2 dengan nilai AIC = 416.94, dan fitmodel3
+dengan nilai AIC = 333.56, dan fitmodel4 dengan nilai AIC 310.53.
+Berdasarkan kelima model tersebut, maka perfomansi model *fitmodel4*
+yang terbaik yaitu model (2,1,1)(2,1,0) dengan nilai AIC sebesar 310.53
+dan nilai p-value untuk keseluruhan signitifkan.
+
+### 5. Forecasting dengan data latih
+
+```{r}
+# Menggunakan fitmodel4
+fcast_co <- forecast(fitmodel4_co, h=5*12)
+fcast_co
+autoplot(fcast_co)
+```
+```{r}
+# Menggunakan fitmodel4
+fcast_co_1 <- forecast(fitmodel1_co, h=5*12)
+fcast_co_1
+autoplot(fcast_co_1)
+```
+
+
+```{r}
+# Menggunakan fitmodel4
+fcast_co_2 <- forecast(fitmodel2_co, h=5*12)
+fcast_co_2
+autoplot(fcast_co_2)
+```
+
+```{r}
+# Menggunakan fitmodel4
+fcast_co_3 <- forecast(fitmodel3_co, h=5*12)
+fcast_co_3
+autoplot(fcast_co_3)
+```
+```{r}
+# membuat prediksi untuk data uji dengan menggunakan model terbaik
+predictSarima_co <- predict(fcast_co, data_test_sarima_co)
+autoplot(predictSarima_co)
+```
+```{r}
+# membuat prediksi untuk data uji dengan menggunakan model terbaik
+predictSarima_co_1 <- predict(fcast_co_3, data_test_sarima_co)
+autoplot(predictSarima_co_1)
+```
+```{r}
+# membuat prediksi untuk data uji dengan menggunakan model terbaik
+predictSarima_co_2 <- predict(fcast_co_2, data_test_sarima_co)
+autoplot(predictSarima_co_1)
+```
+```{r}
+# membuat prediksi untuk data uji dengan menggunakan model terbaik
+predictSarima_co_3 <- predict(fcast_co_1, data_test_sarima_co)
+autoplot(predictSarima_co_1)
+```
+
+```{r}
+# visualisasi hasil forecast dari model multiplicative
+data_test_sarima_co %>% 
+  autoplot()+
+  autolayer(modelautoarima_co$fitted, series = "Auto-Arima(2,0,1)(0,0,1)")+
+  autolayer(data_test_sarima_co, series = "data test") +
+  autolayer(fitmodel1_co$fitted, series = "Model-1(2,2,0)(0,0,1)")+
+  autolayer(fitmodel2_co$fitted, series = "Model-2(2,2,1)(0,0,1)")+
+  autolayer(fitmodel3_co$fitted, series = "Model-3(2,2,1)(0,1,1)")+
+  autolayer(fitmodel4_co$fitted, series = "Model-4(2,1,1)(2,1,0)")+
+  autolayer(predictSarima_co$mean, series = "forecast")+
+  
+  autolayer(predictSarima_co_2$mean, series = "forecast1")+
+  autolayer(predictSarima_co_3$mean, series = "121212122")
+
+```
+```{r}
+# visualisasi hasil forecast dari model multiplicative
+data_train_sarima_co %>% 
+  autoplot()+
+  autolayer(modelautoarima_co$fitted, series = "Auto-Arima(2,0,1)(0,0,1)")+
+  autolayer(data_test_sarima_co, series = "data test") +
+  autolayer(fitmodel1_co$fitted, series = "Model-1(2,2,0)(0,0,1)")+
+  autolayer(fitmodel2_co$fitted, series = "Model-2(2,2,1)(0,0,1)")+
+  autolayer(fitmodel3_co$fitted, series = "Model-3(2,2,1)(0,1,1)")+
+  autolayer(fitmodel4_co$fitted, series = "Model-4(2,1,1)(2,1,0)")+
+  autolayer(predictSarima_co$mean, series = "forecast")
+```
+
+
+
+### 6. Evaluasi Model
+
+```{r}
+# Mean squared error (MSE)
+MSESarima_co <- mean((data_test_sarima_co - predictSarima_co_3$mean)^2)
+MSESarima_co
+
+```
+
+```{r}
+# Root mean squared error (RMSE)
+RMSESarima_co <- sqrt(MSESarima_co)
+RMSESarima_co
+```
+
+```{r}
+# Mean absolute error (MAE)
+MAESarima_co <- mean(abs(data_test_sarima_co - predictSarima_co_3$mean))
+MAESarima_co
+```
+
+```{r}
+# Mean absolute percentage error (MAPE)
+MAPESarima_co <- mean(abs(data_test_sarima_co - predictSarima_co_3$mean) / data_test_sarima_co)
+MAPESarima_co
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## g. Data Dekomposisi
+
+```{r}
+decom_ts_o3 <- ts(data = ispufix$o3, start = c(2016,1), end = c(2021,12), frequency = 12)
+```
+
+```{r}
+# Classical Decomposition
+decom_ts_o3 %>% decompose(type = "multiplicative") %>%
+  autoplot() + xlab("Year") +
+  ggtitle("Multiplicative Decomposition of O3")
+```
+
+```{r}
+decom_ts_o3 %>% decompose(type = "additive") %>%
+  autoplot() + xlab("Year") +
+  ggtitle("Additive Decomposition of O3")
+```
+
+```{r}
+ts_decom_o3 <- decompose(decom_ts_co)
+```
+
+```{r}
+ts_decom_table_o3 <- data.frame(seasonal = ts_decom_o3$seasonal, trend = ts_decom_o3$trend, random = ts_decom_o3$random)
+ts_decom_table_o3 <- na.omit(ts_decom_table_o3)
+descr(ts_decom_table_o3)
+head(ts_decom_table_o3)
+
+```
+
+```{r}
+ts_decom_o3$seasonal
+```
+
+```{r}
+plot(ts_decom_o3$seasonal)
+```
+
+```{r}
+ts_decom_o3$figure
+```
+
+```{r}
+plot(ts_decom_o3$figure,
+     type = 'b',
+     xlab = 'Month',
+     ylab = 'Seasonality Index',
+     col = 'blue',
+     las = 2
+)
+```
+
+```{r}
+#adjustment decomposition data
+ts_decom_adj_o3 <- decom_ts_o3 - ts_decom_o3$seasonal
+plot(ts_decom_adj_o3)
+```
+
+```{r}
+ts_decom_adj_o3
+```
+
+```{r}
+descr(ts_decom_adj_o3)
+```
+
+```{r}
+str(ts_decom_adj_o3)
+```
+
+```{r}
+df_data_o3 <- as.data.frame(ts_decom_adj_o3)
+df_data_o3
+```
+
+
+# 5. Model
+
+## Model SARIMA
+
+### 1. Membagi Data menjadi data latih dan data uji
+
+```{r}
+# Konversi data menjadi data time series menggunakan data dekomposisi time series 
+dataset_o3 <- decom_ts_o3
+plot(dataset_o3)
+ggtsdisplay(dataset_o3)
+```
+
+```{r}
+BoxCox.lambda(dataset_o3)
+```
+
+```{r}
+# Membagi data menjadi data latih dan data uji
+data_train_sarima_o3 <- head(dataset_o3, 5*12) # ambil data 5 tahun 2016-2020
+data_test_sarima_o3 <- tail(dataset_o3, length(dataset_o3)-length(data_train_sarima_o3)) #ambil data 1 tahun terakhir
+data_train_sarima_o3 %>% 
+  decompose() %>% 
+  autoplot()
+```
+
+```{r}
+plot(data_train_sarima_o3)
+```
+
+```{r}
+length(data_train_sarima_o3)
+length(data_test_sarima_o3)
+```
+
+### 2. Mengidentifikasi Diferensi
+
+#### a. Mengidentifikasi Diferensi musiman order 1
+
+```{r}
+par(mfrow = c(2,1))
+acf(data_train_sarima_o3, lag.max = 36)
+pacf(data_train_sarima_o3, lag.max = 36)
+```
+
+```{r}
+adf.test(data_train_sarima_o3)
+```
+
+
+```{r}
+plot(data_train_sarima_o3)
+```
+
+```{r}
+data_train_sarima_ds_o3 <- diff(data_train_sarima_o3, differences = 1, lag = 12)
+adf.test(data_train_sarima_ds_o3)
+plot(data_train_sarima_ds_o3)
+```
+
+Dari hasil diatas bisa disimpulkan bahwa data belum stationer karena
+nilai p-value \> 0,05 yaitu sebesar 0,4503.
+
+#### b. Mengidentifikasi Diferensi non-musiman order 1
+
+```{r}
+data_train_sarima_dss_o3 <- diff(data_train_sarima_ds_o3, differences = 1)
+adf.test(data_train_sarima_dss_o3)
+plot(data_train_sarima_dss_o3)
+```
+
+Dari hasil diatas bisa disimpulkan bahwa data sudah stationer karena
+nilai p-value \< 0,05 yaitu sebesar 0,01.
+
+### 3. Mengidentifikasi kemungkinan model yang tepat
+
+```{r}
+par(mfrow = c(2,1))
+acf(data_train_sarima_dss_o3, lag.max = 36)
+pacf(data_train_sarima_dss_o3, lag.max = 36)
+```
+
+```{r}
+data_train_sarima_dss_o3
+```
+
+### 4. Fit Model
+
+Menentukan model prediksi yang terbaik yang dapat dilihat dari nilai
+performansi Akaike Information Criteria (AIC) dan nilai signifikan
+(p-value). Model yang lebih baik akan memiliki nilai AIC yang lebih
+rendah
+
+#### a. Fit Model 1
+
+
+```{r}
+# Fit Model 1
+fitmodel1_o3 <- Arima (data_train_sarima_o3,
+                    order = c(2,2,0),
+                    seasonal = c(0,0,1),
+                    lambda = NULL,
+                    include.constant = TRUE)
+coeftest(fitmodel1_o3)
+checkresiduals(fitmodel1_o3)
+ggtsdisplay(fitmodel1_o3$residuals)
+summary(fitmodel1_o3)
+```
+
+```{r}
+Box.test(residuals(fitmodel1_o3), lag = 12, type = "Ljung-Box")
+```
+
+Berdasarkan hasil diatas bisa dilihat bahwa, semua nilai signifikan.
+Secara keseluruhan dari model sudah cukup signifikan dengan nilai
+p-value 0,000000126 dimana nilai signifikan \< 0,05 dan nilai AIC =
+455.9. Sekarang kita akan lakukan fit model yang kedua dengan tujuan
+untuk mendapatkan nilai yang lebih baik.
+
+#### b. Fit Model 2
+
+```{r}
+# Fit Model 2
+fitmodel2_o3 <- Arima (data_train_sarima_o3,
+                    order = c(2,2,1),
+                    seasonal = c(0,0,1),
+                    lambda = NULL,
+                    include.constant = TRUE)
+coeftest(fitmodel2_o3)
+checkresiduals(fitmodel2_o3)
+ggtsdisplay(fitmodel2_o3$residuals)
+summary(fitmodel2_o3)
+```
+
+```{r}
+Box.test(residuals(fitmodel2_o3), lag = 12, type = "Ljung-Box")
+```
+
+Berdasarkan fit model yang ke 2 didapatkan bahwa secara keseluruhan
+model sudah signitifan dengan nilai p-value 0,0000001652 dimana nilai
+signifikan \< 0,05 dan nilai AIC 416.95. Kita akan lanjutkan melakukan
+fit model yang ke 3.
+
+#### c. Fit Model 3
+
+```{r}
+# Fit Model 3
+fitmodel3_o3 <- Arima (data_train_sarima_o3,
+                    order = c(2,2,1),
+                    seasonal = c(0,1,1),
+                    lambda = NULL,
+                    include.constant = TRUE)
+coeftest(fitmodel3_o3)
+checkresiduals(fitmodel3_o3)
+ggtsdisplay(fitmodel3_o3$residuals)
+summary(fitmodel3_o3)
+```
+
+```{r}
+Box.test(residuals(fitmodel3_o3), lag = 12, type = "Ljung-Box")
+```
+
+Berdasarkan fit model yang ke 3 didapatkan bahwa secara keseluruhan
+model sudah signitifan dengan nilai p-value 0,00026 dimana nilai
+signifikan \< 0,05 dan nilai AIC = 333,57.
+
+#### d. Menentukan model terbaik dengan auto.arima
+
+```{r}
+ARIMAfit_o3 <- auto.arima(
+  data_train_sarima_o3, 
+  d=1, 
+  stepwise = FALSE, 
+  approximation=FALSE,
+  trace=TRUE)
+ARIMAfit_o3
+```
+
+
+
+```{r}
+# Menentukan model terbaik
+modelautoarima_o3 <- auto.arima(
+  data_train_sarima_o3,
+  stepwise = FALSE,
+  approximation = FALSE,
+  trace = TRUE)
+modelautoarima_o3
+
+```
+
+```{r}
+Box.test(residuals(modelautoarima_o3), lag = 12, type = "Ljung-Box")
+```
+
+#### e. Fit Model 4
+```{r}
+# Fit Model 4
+fitmodel4_o3 <- Arima (data_train_sarima_o3,
+                    order = c(3,0,3),
+                    seasonal = c(2,1,2),
+                    lambda = NULL,
+                    include.constant = TRUE)
+coeftest(fitmodel4_o3)
+checkresiduals(fitmodel4_o3)
+ggtsdisplay(fitmodel4_o3$residuals)
+summary(fitmodel4_o3)
+```
+
+```{r}
+Box.test(residuals(fitmodel4_o3), lag = 12, type = "Ljung-Box")
+```
+
+```{r}
+hasil_df_o3 <- data.frame(
+  id = c(1:5),
+  Model = c("Model1(2,2,0)(0,0,1)", "Model2(2,2,1)(0,0,1)", "Model3(2,2,1)(0,1,1)", "Model4(2,1,1)(2,1,0)","AutoArima(2,0,1)(0,0,1)"),
+  AIC = c(fitmodel1_o3$aic, fitmodel2_o3$aic, fitmodel3_o3$aic, fitmodel4_o3$aic, modelautoarima_o3$aic),
+  BIC = c(fitmodel1_o3$bic, fitmodel2_o3$bic, fitmodel3_o3$bic, fitmodel4_o3$bic, modelautoarima_o3$bic),
+   stringsAsFactors = FALSE
+)
+hasil_df_o3
+```
+
+Berdasarkan modelautoarima didapatkan model (2,0,1)(0,0,1) dengan nilai
+AIC = 370.41. Sehingga dapat disimpulkan bahwa performa fitmodel1 dengan
+nilai AIC = 455.90, fitmodel2 dengan nilai AIC = 416.94, dan fitmodel3
+dengan nilai AIC = 333.56, dan fitmodel4 dengan nilai AIC 310.53.
+Berdasarkan kelima model tersebut, maka perfomansi model *fitmodel4*
+yang terbaik yaitu model (2,1,1)(2,1,0) dengan nilai AIC sebesar 310.53
+dan nilai p-value untuk keseluruhan signitifkan.
+
+### 5. Forecasting dengan data latih
+
+```{r}
+# Menggunakan fitmodel4
+fcast_o3 <- forecast(fitmodel4_o3, h=5*12)
+fcast_o3
+autoplot(fcast_o3)
+```
+
+```{r}
+#Menggunakan fitmodel4
+fcast_no2_FITT_o3 <- forecast(ARIMAfit_o3, h=5*12)
+fcast_no2_FITT_o3
+autoplot(fcast_no2_FITT_o3)
+
+
+```
+
+
+```{r}
+# membuat prediksi untuk data uji dengan menggunakan model terbaik
+predictSarima_o3 <- predict(fcast_o3, data_test_sarima_o3)
+autoplot(predictSarima_o3)
+```
+
+```{r}
+# visualisasi hasil forecast dari model multiplicative
+data_test_sarima_o3 %>% 
+  autoplot()+
+  autolayer(modelautoarima_o3$fitted, series = "Auto-Arima(2,0,1)(0,0,1)")+
+  autolayer(data_test_sarima_o3, series = "data test") +
+  autolayer(fitmodel1_o3$fitted, series = "Model-1(2,2,0)(0,0,1)")+
+  autolayer(fitmodel2_o3$fitted, series = "Model-2(2,2,1)(0,0,1)")+
+  autolayer(fitmodel3_o3$fitted, series = "Model-3(2,2,1)(0,1,1)")+
+  autolayer(fitmodel4_o3$fitted, series = "Model-4(2,1,1)(2,1,0)")+
+  autolayer(predictSarima_o3$mean, series = "forecast")
+```
+```{r}
+# visualisasi hasil forecast dari model multiplicative
+data_train_sarima_o3 %>% 
+  autoplot()+
+  autolayer(modelautoarima_o3$fitted, series = "Auto-Arima(2,0,1)(0,0,1)")+
+  autolayer(data_test_sarima_o3, series = "data test") +
+  autolayer(fitmodel1_o3$fitted, series = "Model-1(2,2,0)(0,0,1)")+
+  autolayer(fitmodel2_o3$fitted, series = "Model-2(2,2,1)(0,0,1)")+
+  autolayer(fitmodel3_o3$fitted, series = "Model-3(2,2,1)(0,1,1)")+
+  autolayer(fitmodel4_o3$fitted, series = "Model-4(2,1,1)(2,1,0)")+
+  autolayer(predictSarima_o3$mean, series = "forecast") +
+
+ autolayer(fcast_no2_FITT_o3$mean, series = "asdsd")
+
+```
+
+
+
+### 6. Evaluasi Model
+
+```{r}
+# Mean squared error (MSE)
+MSESarima_o3 <- mean((data_test_sarima_o3 - predictSarima_o3$mean)^2)
+MSESarima_o3
+```
+
+```{r}
+# Root mean squared error (RMSE)
+RMSESarima_o3 <- sqrt(MSESarima_o3)
+RMSESarima_o3
+```
+
+```{r}
+# Mean absolute error (MAE)
+MAESarima_o3 <- mean(abs(data_test_sarima_o3 - predictSarima_o3$mean))
+MAESarima_o3
+```
+
+```{r}
+# Mean absolute percentage error (MAPE)
+MAPESarima_o3 <- mean(abs(data_test_sarima_o3 - predictSarima_o3$mean) / data_test_sarima_o3)
+MAPESarima_o3
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## g. Data Dekomposisi
+
+```{r}
+decom_ts_no2 <- ts(data = ispufix$no2, start = c(2016,1), end = c(2021,12), frequency = 12)
+```
+
+
+```{r}
+autoplot(decom_ts_no2)
+```
+
+```{r}
+# Classical Decomposition
+decom_ts_no2 %>% decompose(type = "multiplicative") %>%
+  autoplot() + xlab("Year") +
+  ggtitle("Multiplicative Decomposition of 3")
+```
+
+```{r}
+decom_ts_no2 %>% decompose(type = "additive") %>%
+  autoplot() + xlab("Year") +
+  ggtitle("Additive Decomposition of NO2")
+```
+
+```{r}
+ts_decom_no2 <- decompose(decom_ts_no2)
+```
+
+```{r}
+ts_decom_table_no2 <- data.frame(seasonal = ts_decom_no2$seasonal, trend = ts_decom_no2$trend, random = ts_decom_no2$random)
+ts_decom_table_no2 <- na.omit(ts_decom_table_no2)
+descr(ts_decom_table_no2)
+head(ts_decom_table_no2)
+
+```
+
+```{r}
+ts_decom_no2$seasonal
+```
+
+```{r}
+plot(ts_decom_no2$seasonal)
+```
+
+```{r}
+ts_decom_no2$figure
+```
+
+```{r}
+plot(ts_decom_no2$figure,
+     type = 'b',
+     xlab = 'Month',
+     ylab = 'Seasonality Index',
+     col = 'blue',
+     las = 2
+)
+```
+
+```{r}
+#adjustment decomposition data
+ts_decom_adj_no2 <- decom_ts_no2 - ts_decom_no2$seasonal
+plot(ts_decom_adj_no2)
+```
+
+```{r}
+ts_decom_adj_no2
+```
+
+```{r}
+descr(ts_decom_adj_no2)
+```
+
+```{r}
+str(ts_decom_adj_no2)
+```
+
+```{r}
+df_data_no2 <- as.data.frame(ts_decom_adj_no2)
+df_data_no2
+```
+
+
+# 5. Model
+
+## Model SARIMA
+
+### 1. Membagi Data menjadi data latih dan data uji
+
+```{r}
+# Konversi data menjadi data time series menggunakan data dekomposisi time series 
+dataset_no2 <- decom_ts_no2
+plot(dataset_no2)
+ggtsdisplay(dataset_no2)
+```
+
+```{r}
+BoxCox.lambda(dataset_no2)
+```
+
+```{r}
+# Membagi data menjadi data latih dan data uji
+data_train_sarima_no2 <- head(dataset_no2, 5*12) # ambil data 5 tahun 2016-2020
+data_test_sarima_no2 <- tail(dataset_no2, length(dataset_no2)-length(data_train_sarima_no2)) #ambil data 1 tahun terakhir
+data_train_sarima_no2 %>% 
+  decompose() %>% 
+  autoplot()
+```
+
+```{r}
+plot(data_train_sarima_no2)
+```
+
+```{r}
+length(data_train_sarima_no2)
+length(data_test_sarima_no2)
+```
+```{r}
+
+adf.test(data_train_sarima_no2)
+```
+
+### 2. Mengidentifikasi Diferensi
+
+#### a. Mengidentifikasi Diferensi musiman order 1
+```{r}
+adf.test(data_train_sarima_no2)
+```
+
+```{r}
+data_train_sarima_ds_no2 <- diff(data_train_sarima_no2, differences = 1, lag = 12)
+adf.test(data_train_sarima_ds_no2)
+plot(data_train_sarima_ds_no2)
+```
+
+Dari hasil diatas bisa disimpulkan bahwa data belum stationer karena
+nilai p-value \> 0,05 yaitu sebesar 0,4503.
+
+#### b. Mengidentifikasi Diferensi non-musiman order 1
+
+```{r}
+data_train_sarima_dss_no2 <- diff(data_train_sarima_ds_no2, differences = 1)
+adf.test(data_train_sarima_dss_no2)
+plot(data_train_sarima_dss_no2)
+```
+
+Dari hasil diatas bisa disimpulkan bahwa data sudah stationer karena
+nilai p-value \< 0,05 yaitu sebesar 0,01.
+
+### 3. Mengidentifikasi kemungkinan model yang tepat
+
+```{r}
+par(mfrow = c(2,1))
+acf(data_train_sarima_dss_no2, lag.max = 36)
+pacf(data_train_sarima_dss_no2, lag.max = 36)
+```
+
+```{r}
+data_train_sarima_dss_no2
+```
+
+### 4. Fit Model
+
+Menentukan model prediksi yang terbaik yang dapat dilihat dari nilai
+performansi Akaike Information Criteria (AIC) dan nilai signifikan
+(p-value). Model yang lebih baik akan memiliki nilai AIC yang lebih
+rendah
+
+#### a. Fit Model 1
+
+
+```{r}
+# Fit Model 1
+fitmodel1_no2 <- Arima (data_train_sarima_no2,
+                    order = c(2,2,0),
+                    seasonal = c(0,0,1),
+                    lambda = NULL,
+                    include.constant = TRUE)
+coeftest(fitmodel1_no2)
+checkresiduals(fitmodel1_no2)
+ggtsdisplay(fitmodel1_no2$residuals)
+summary(fitmodel1_no2)
+```
+
+```{r}
+Box.test(residuals(fitmodel1_no2), lag = 12, type = "Ljung-Box")
+```
+
+Berdasarkan hasil diatas bisa dilihat bahwa, semua nilai signifikan.
+Secara keseluruhan dari model sudah cukup signifikan dengan nilai
+p-value 0,000000126 dimana nilai signifikan \< 0,05 dan nilai AIC =
+455.9. Sekarang kita akan lakukan fit model yang kedua dengan tujuan
+untuk mendapatkan nilai yang lebih baik.
+
+#### b. Fit Model 2
+
+```{r}
+# Fit Model 2
+fitmodel2_no2 <- Arima (data_train_sarima_no2,
+                    order = c(2,2,1),
+                    seasonal = c(0,0,1),
+                    lambda = NULL,
+                    include.constant = TRUE)
+coeftest(fitmodel2_no2)
+checkresiduals(fitmodel2_no2)
+ggtsdisplay(fitmodel2_no2$residuals)
+summary(fitmodel2_no2)
+```
+
+```{r}
+Box.test(residuals(fitmodel2_no2), lag = 12, type = "Ljung-Box")
+```
+
+Berdasarkan fit model yang ke 2 didapatkan bahwa secara keseluruhan
+model sudah signitifan dengan nilai p-value 0,0000001652 dimana nilai
+signifikan \< 0,05 dan nilai AIC 416.95. Kita akan lanjutkan melakukan
+fit model yang ke 3.
+
+#### c. Fit Model 3
+
+```{r}
+# Fit Model 3
+fitmodel3_no2 <- Arima (data_train_sarima_no2,
+                    order = c(2,2,1),
+                    seasonal = c(0,1,1),
+                    lambda = NULL,
+                    include.constant = TRUE)
+coeftest(fitmodel3_no2)
+checkresiduals(fitmodel3_no2)
+ggtsdisplay(fitmodel3_no2$residuals)
+summary(fitmodel3_no2)
+```
+
+```{r}
+Box.test(residuals(fitmodel3_no2), lag = 12, type = "Ljung-Box")
+```
+
+Berdasarkan fit model yang ke 3 didapatkan bahwa secara keseluruhan
+model sudah signitifan dengan nilai p-value 0,00026 dimana nilai
+signifikan \< 0,05 dan nilai AIC = 333,57.
+
+#### d. Menentukan model terbaik dengan auto.arima
+
+
+
+```{r}
+ARIMAfit <- auto.arima(
+  #data_train_sarima_dss_no2, 
+  data_train_sarima_no2,
+  d=2, 
+  stepwise = FALSE, 
+  approximation=FALSE,
+  trace=TRUE)
+ARIMAfit
+```
+
+```{r}
+Box.test(residuals(ARIMAfit), lag = 12, type = "Ljung-Box")
+```
+
+```{r}
+# Menentukan model terbaik
+modelautoarima_no2 <- auto.arima(
+  data_train_sarima_no2,
+  stepwise = FALSE,
+  approximation = FALSE,
+  trace = TRUE)
+modelautoarima_no2
+
+```
+
+```{r}
+Box.test(residuals(modelautoarima_no2), lag = 12, type = "Ljung-Box")
+```
+
+#### e. Fit Model 4
+```{r}
+# Fit Model 4
+fitmodel4_no2 <- Arima (data_train_sarima_no2,
+                    order = c(2,1,1),
+                    seasonal = c(2,1,0),
+                    lambda = NULL,
+                    include.constant = TRUE)
+coeftest(fitmodel4_no2)
+checkresiduals(fitmodel4_no2)
+ggtsdisplay(fitmodel4_no2$residuals)
+summary(fitmodel4_no2)
+```
+
+```{r}
+Box.test(residuals(fitmodel4_no2), lag = 12, type = "Ljung-Box")
+```
+
+```{r}
+hasil_df_no2 <- data.frame(
+  id = c(1:4),
+  Model = c("Model1(2,2,0)(0,0,1)", "Model2(2,2,1)(0,0,1)", "Model3(2,2,1)(0,1,1)", "AutoArima(2,0,1)(0,0,1)"),
+  AIC = c(fitmodel1_no2$aic, fitmodel2_no2$aic, fitmodel3_no2$aic,  modelautoarima_no2$aic),
+  BIC = c(fitmodel1_no2$bic, fitmodel2_no2$bic, fitmodel3_no2$bic,  modelautoarima_no2$bic),
+   stringsAsFactors = FALSE
+)
+hasil_df_no2
+```
+
+Berdasarkan modelautoarima didapatkan model (2,0,1)(0,0,1) dengan nilai
+AIC = 370.41. Sehingga dapat disimpulkan bahwa performa fitmodel1 dengan
+nilai AIC = 455.90, fitmodel2 dengan nilai AIC = 416.94, dan fitmodel3
+dengan nilai AIC = 333.56, dan fitmodel4 dengan nilai AIC 310.53.
+Berdasarkan kelima model tersebut, maka perfomansi model *fitmodel4*
+yang terbaik yaitu model (2,1,1)(2,1,0) dengan nilai AIC sebesar 310.53
+dan nilai p-value untuk keseluruhan signitifkan.
+
+### 5. Forecasting dengan data latih
+
+```{r}
+#Menggunakan fitmodel4
+fcast_no2 <- forecast(modelautoarima_no2, h=5*12)
+fcast_no2
+autoplot(fcast_no2)
+```
+
+```{r}
+#Menggunakan fitmodel4
+fcast_no2_FITT <- forecast(ARIMAfit, h=5*12)
+fcast_no2_FITT
+autoplot(fcast_no2_FITT)
+```
+```{r}
+#Menggunakan fitmodel4
+fcast_no2_2 <- forecast(fitmodel4_no2, h=5*12)
+fcast_no2_2
+autoplot(fcast_no2_2)
+```
+
+```{r}
+# membuat prediksi untuk data uji dengan menggunakan model terbaik
+predictSarima_no2 <- predict(fcast_no2, data_test_sarima_no2)
+autoplot(predictSarima_no2)
+```
+
+
+```{r}
+# membuat prediksi untuk data uji dengan menggunakan model terbaik
+predictSarima_no2_2 <- predict(fcast_no2_2, data_test_sarima_no2)
+autoplot(predictSarima_no2_2)
+```
+
+```{r}
+# visualisasi hasil forecast dari model multiplicative
+data_test_sarima_no2 %>% 
+  autoplot()+
+  autolayer(modelautoarima_no2$fitted, series = "Auto-Arima(2,0,1)(0,0,1)")+
+  autolayer(data_test_sarima_no2, series = "data test") +
+  autolayer(fitmodel1_no2$fitted, series = "Model-1(2,2,0)(0,0,1)")+
+  autolayer(fitmodel2_no2$fitted, series = "Model-2(2,2,1)(0,0,1)")+
+  autolayer(fitmodel3_no2$fitted, series = "Model-3(2,2,1)(0,1,1)")+
+  autolayer(data_train_sarima_no2, series = "forecast")+
+  
+ autolayer(fcast_no2_FITT$mean, series = "SADSAD")+
+  autolayer(predictSarima_no2_2$mean, series = "12344")+
+  autolayer(predictSarima_no2$mean, series = "forecast")
+```
+```{r}
+# visualisasi hasil forecast dari model multiplicative
+data_train_sarima_no2 %>% 
+  autoplot()+
+  autolayer(modelautoarima_no2$fitted, series = "Auto-Arima(2,0,1)(0,0,1)")+
+  autolayer(data_test_sarima_no2, series = "data test") +
+  autolayer(fitmodel1_no2$fitted, series = "Model-1(2,2,0)(0,0,1)")+
+  autolayer(fitmodel2_no2$fitted, series = "Model-2(2,2,1)(0,0,1)")+
+  autolayer(fitmodel3_no2$fitted, series = "Model-3(2,2,1)(0,1,1)")+
+
+  autolayer(predictSarima_no2$mean, series = "forecast")
+```
+
+
+
+### 6. Evaluasi Model
+
+```{r}
+# Mean squared error (MSE)
+MSESarima_no2 <- mean((data_test_sarima_no2 - predictSarima_no2_2$mean)^2)
+MSESarima_no2
+```
+
+```{r}
+# Root mean squared error (RMSE)
+RMSESarima_no2 <- sqrt(MSESarima_no2)
+RMSESarima_no2
+```
+
+```{r}
+# Mean absolute error (MAE)
+MAESarima_no2 <- mean(abs(data_test_sarima_no2 - predictSarima_no2_2$mean))
+MAESarima_no2
+```
+
+```{r}
+# Mean absolute percentage error (MAPE)
+MAPESarima_no2 <- mean(abs(data_test_sarima_no2 - predictSarima_no2_2$mean) / data_test_sarima_no2)
+MAPESarima_no2
+```
+
+
+
+
+```{r}
+# visualisasi hasil forecast dari model multiplicative
+data_train_sarima_no2 %>% 
+  autoplot()+
+  autolayer(data_train_sarima_co, series = "Data CO")+
+  autolayer(data_train_sarima, series = "Data SO2") +
+  autolayer(data_train_sarima_o3, series = "Data O3")+
+  autolayer(data_train_sarima_pm10, series = "Data PM10")+
+  
+
+  
+ 
+  
+  autolayer(predictSarima_o3$mean, series = "Predict O3") +
+  autolayer(predictSarima_no2_2$mean)+
+  autolayer(predictSarima_co$mean, series = "Predict CO")+
+  autolayer(predictSarima_pm10$mean, series = "Predict PM10")+
+  autolayer(predictSarima$mean, series = "Predict SO2")
+```
+
+```{r}
+# visualisasi hasil forecast dari model multiplicative
+data_train_sarima_no2  %>% 
+  autoplot()+
+  autolayer(data_train_sarima_no2, series = "Data NO2")+
+  autolayer(data_train_sarima_co, series = "Data CO")+
+  autolayer(data_train_sarima, series = "Data SO2") +
+  autolayer(data_train_sarima_o3, series = "Data O3")+
+  autolayer(data_train_sarima_pm10, series = "Data PM10")+
+  
+
+  
+ 
+  
+  autolayer(predictSarima_o3$mean, series = "Data O3") +
+  autolayer(predictSarima_no2_2$mean, series = "Data NO2")+
+  autolayer(predictSarima_co$mean, series = "Data CO")+
+  autolayer(predictSarima_pm10$mean, series = "Data PM10")+
+  autolayer(predictSarima$mean, series = "Data SO2")+
+  ylab("Jumlah Partikel (μg/m3)") +
+  xlab("Tahun") 
+```
+
+
+```{r}
+#visualisasi 5 variabel prediksi Model SVR
+ggplot(data = svr_so2, aes(x = first_date_month, y = hasil_prediksi, color = "SO2"))+ geom_line() +
+geom_line(data = svr_pm10, aes(x = first_date_month, y = hasil_prediksi, color = "PM10"))+
+geom_line(data = svr_no2, aes(x = first_date_month, y = hasil_prediksi, color = "NO2"))+
+geom_line(data = svr_co, aes(x = first_date_month, y = hasil_prediksi, color = "CO"))+
+geom_line(data = svr_o3, aes(x = first_date_month, y = hasil_prediksi, color = "O3"))+
+labs(title = "Visualisasi 5 Variabel Prediksi SVR",
+     x = "Tahun",
+     y = "Jumlah Partikel (μg/m3)") +
+theme_minimal() +
+scale_color_manual(values = c("#fff80e","#0e8eff","#30e97f","#0e0700","#d19f00"),
+labels = c("SO2","PM10","NO2","CO","O3")) +
+theme(legend.position = "bottom")
+```
+
+
+
+```{r}
+# visualisasi hasil forecast dari model multiplicative
+data_train_sarima_no2  %>% 
+  autoplot()+
+  autolayer(data_train_sarima_no2, series = "Data NO2")+
+  autolayer(data_train_sarima_co, series = "Data CO")+
+  autolayer(data_train_sarima, series = "Data SO2") +
+  autolayer(data_train_sarima_o3, series = "Data O3")+
+  autolayer(data_train_sarima_pm10, series = "Data PM10")+
+  
+
+  
+ 
+  
+  autolayer(predictSarima_o3$mean, series = "Data O3") +
+  autolayer(predictSarima_no2_2$mean, series = "Data NO2")+
+  autolayer(predictSarima_co_3$mean, series = "Data CO")+
+  autolayer(predictSarima_pm10$mean, series = "Data PM10")+
+  autolayer(predictSarima$mean, series = "Data SO2")+
+  ylab("Jumlah Partikel (μg/m3)") +
+  xlab("Tahun") 
+```
+```
+
+
+```{r}
+autoplot(data_train_sarima_no2)
+```
